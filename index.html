@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>택배왔어요 - 지도형 행정구역 게임</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Jua', sans-serif;
+      user-select: none;
+      background: #ffffff;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #aad3df;
+      z-index: 1;
+    }
+
+    #school-logo {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      width: clamp(62px, 8vw, 96px);
+      height: auto;
+      opacity: 0.78;
+      z-index: 650;
+      pointer-events: none;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.75);
+      padding: 4px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    }
+
+    /* 👑 캐릭터 */
+    #character {
+      position:absolute;
+      bottom:120px;
+      left:20px;
+      font-size:60px;
+      z-index:600;
+      transition: left 0.65s ease, top 0.65s ease, transform 0.3s;
+    }
+
+    .jump {
+      transform: translateY(-40px) scale(1.2);
+    }
+
+    .shake {
+      animation: shake 0.4s;
+    }
+
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      50% { transform: translateX(10px); }
+      75% { transform: translateX(-10px); }
+      100% { transform: translateX(0); }
+    }
+
+    .sparkle {
+      position:absolute;
+      font-size:30px;
+      animation: sparkleAnim 0.6s ease-out;
+      pointer-events:none;
+      z-index: 900;
+    }
+
+    @keyframes sparkleAnim {
+      0% { opacity:1; transform: scale(0.5); }
+      100% { opacity:0; transform: scale(1.5) translateY(-40px); }
+    }
+
+    /* 🎆 정답 시 화면 전체 반짝 */
+    #flash-effect {
+      position: fixed;
+      inset: 0;
+      z-index: 850;
+      pointer-events: none;
+      background: radial-gradient(circle, rgba(255,255,180,0.9) 0%, rgba(255,255,255,0.45) 35%, rgba(255,255,255,0) 70%);
+      opacity: 0;
+    }
+
+    .flash-on {
+      animation: fullFlash 0.65s ease-out;
+    }
+
+    @keyframes fullFlash {
+      0% { opacity: 0; }
+      20% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    .big-confetti {
+      position: fixed;
+      font-size: 34px;
+      z-index: 900;
+      pointer-events: none;
+      animation: confettiPop 0.9s ease-out forwards;
+    }
+
+    @keyframes confettiPop {
+      0% { opacity: 1; transform: translateY(0) scale(0.6) rotate(0deg); }
+      100% { opacity: 0; transform: translateY(-90px) scale(1.4) rotate(180deg); }
+    }
+
+    /* 🎇 정답 폭죽 */
+    .firework-particle {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      z-index: 950;
+      pointer-events: none;
+      animation: fireworkBurst 0.8s ease-out forwards;
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    @keyframes fireworkBurst {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1.2);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(var(--dx), var(--dy)) scale(0.2);
+      }
+    }
+
+    .city-polygon {
+      cursor: pointer;
+      transition: fill-color 0.25s, fill-opacity 0.25s, stroke 0.25s;
+    }
+
+    .city-tooltip {
+      background: rgba(255, 255, 255, 0.96);
+      border: 2px solid #1d4ed8;
+      border-radius: 10px;
+      color: #1e3a8a;
+      font-family: 'Jua', sans-serif;
+      font-size: 16px;
+      padding: 2px 8px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+    }
+
+    .star {
+      font-size: clamp(30px, 4.4vw, 48px);
+      color: #fffdf0;
+      -webkit-text-stroke: 4px #e5e7eb;
+      text-shadow: 0 2px 1px rgba(0,0,0,0.04);
+      transition: all 0.25s ease;
+    }
+
+    .star.earned {
+      color: #facc15;
+      -webkit-text-stroke: 3px #f59e0b;
+      transform: scale(1.12);
+      text-shadow: 0 0 8px rgba(250, 204, 21, 0.65);
+    }
+
+    @keyframes timerPulse {
+      0%, 100% { transform: scale(1); color: #000; }
+      50% { transform: scale(1.14); color: #ef4444; }
+    }
+
+    .timer-warning {
+      animation: timerPulse 0.8s infinite;
+    }
+
+    @keyframes pop {
+      0% { transform: translate(-50%, -50%) scale(0.75); opacity: 0; }
+      70% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+
+    .pop-alert {
+      animation: pop 0.25s ease-out;
+    }
+
+    .leaflet-control-zoom a {
+      font-family: sans-serif;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="relative w-screen h-screen flex flex-col bg-white">
+
+    <!-- 왕곡초 로고: 같은 폴더에 로고 파일을 넣으면 표시됩니다. -->
+    <img id="school-logo" src="왕곡초 로고(3).jpg" alt="왕곡초 로고" onerror="this.style.display='none'" />
+
+    <!-- 🎮 시작 화면 -->
+    <section id="start-screen" class="absolute inset-0 z-[1100] bg-black/60 backdrop-blur-sm flex items-center justify-center">
+      <div class="bg-white rounded-3xl p-10 text-center shadow-2xl border-4 border-blue-300">
+        <div id="box" class="text-7xl mb-4 transition-transform duration-500">📦</div>
+        <div class="text-3xl mb-2">👑 어린왕자 선생님과 함께!</div>
+        <div class="text-7xl mb-4">📦</div>
+        <h1 class="text-5xl text-blue-700 mb-4">택배왔어요!</h1>
+        <button onclick="openBoxAndStart()" class="bg-blue-500 text-white text-3xl px-8 py-4 rounded-2xl shadow-lg hover:bg-blue-400">
+          게임 시작
+        </button>
+      </div>
+    </section>
+
+    <section id="loading-screen" class="absolute inset-0 z-[1000] bg-black/55 backdrop-blur-sm flex items-center justify-center">
+      <div class="rounded-[2rem] bg-white px-10 py-8 text-center shadow-2xl border-4 border-yellow-300">
+        <div class="text-6xl mb-3">📦</div>
+        <h1 class="text-5xl text-blue-700 mb-3">택배왔어요!</h1>
+        <p id="loading-message" class="text-2xl text-rose-500 animate-pulse">지도 데이터를 불러오는 중...</p>
+        <button id="retry-btn" onclick="location.reload()" class="hidden mt-5 bg-yellow-300 text-yellow-950 text-2xl px-6 py-3 rounded-full shadow-md">새로고침</button>
+      </div>
+    </section>
+
+    <section id="result-screen" class="hidden absolute inset-0 z-[1000] bg-black/70 backdrop-blur-sm items-center justify-center">
+      <div class="w-[90%] max-w-md rounded-[2rem] bg-white p-9 text-center shadow-2xl border-4 border-blue-200">
+        <div id="result-icon" class="text-7xl mb-3">🌱</div>
+        <h2 id="result-title" class="text-4xl text-blue-700 mb-3">택배 수습생</h2>
+        <p class="text-2xl text-gray-700 mb-7">획득한 별: <span id="result-score" class="text-yellow-500 text-4xl">0</span>개</p>
+        <button onclick="resetGame()" class="w-full bg-blue-500 hover:bg-blue-400 text-white text-3xl py-4 rounded-2xl shadow-[0_6px_0_#1d4ed8] active:translate-y-[6px] active:shadow-none transition-all">
+          다시 하기
+        </button>
+      </div>
+    </section>
+
+    <main class="relative flex-1 min-h-0">
+      <div id="map"></div>
+      <div id="flash-effect"></div>
+
+      <!-- 👑 어린왕자 캐릭터 -->
+      <div id="character">🤴</div>
+
+      <div id="success-alert" class="hidden absolute left-1/2 top-1/2 z-[700] -translate-x-1/2 -translate-y-1/2 bg-gray-900/90 text-white text-5xl px-10 py-6 rounded-3xl border-4 border-white shadow-2xl pointer-events-none">
+        배송 성공! 📦
+      </div>
+
+      <div id="wrong-alert" class="hidden absolute left-1/2 top-1/2 z-[700] -translate-x-1/2 -translate-y-1/2 bg-red-600/95 text-white text-4xl px-10 py-6 rounded-3xl border-4 border-white shadow-2xl pointer-events-none">
+        다시 찾아볼까요? 🧐
+      </div>
+
+      <button onclick="toggleHint()" class="absolute right-5 bottom-5 z-[500] bg-rose-500 hover:bg-rose-400 text-white text-2xl md:text-3xl px-7 py-4 rounded-full shadow-xl active:scale-95 transition" style="font-family: 'Jua', sans-serif;">
+        💡 위치 힌트 <span id="hint-state">보기</span>
+      </button>
+    </main>
+
+    <footer class="relative h-[20vh] min-h-[120px] max-h-[175px] bg-white border-t-[5px] border-blue-500 shadow-[0_-8px_20px_rgba(0,0,0,0.08)] flex flex-col items-center justify-center px-4">
+      <div class="flex items-center justify-center gap-3 mb-3">
+        <span class="text-4xl md:text-5xl text-gray-900" style="font-family: 'Jua', sans-serif;">배송지:</span>
+        <span id="target-city" class="text-4xl md:text-5xl text-blue-700 bg-yellow-200 px-5 py-1 rounded-xl shadow-inner" style="font-family: 'Jua', sans-serif;">-</span>
+        <span id="round-info" class="text-2xl md:text-3xl text-gray-500 ml-2 font-sans font-bold">(1/10)</span>
+      </div>
+
+      <div id="star-container" class="flex items-center justify-center gap-5"></div>
+
+      <div class="absolute right-[9vw] top-1/2 -translate-y-1/2 flex flex-col items-center">
+        <div class="text-4xl mb-[-6px]">⏰</div>
+        <div id="timer-text" class="text-5xl md:text-6xl text-black leading-none">15</div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const cityMapping = {
+      '3101': '수원시', '3102': '성남시', '3103': '의정부시', '3104': '안양시',
+      '3105': '부천시', '3106': '광명시', '3107': '평택시', '3108': '동두천시',
+      '3109': '안산시', '3110': '고양시', '3111': '과천시', '3112': '구리시',
+      '3113': '남양주시', '3114': '오산시', '3115': '시흥시', '3116': '군포시',
+      '3117': '의왕시', '3118': '하남시', '3119': '용인시', '3120': '파주시',
+      '3121': '이천시', '3122': '안성시', '3123': '김포시', '3124': '화성시',
+      '3125': '광주시', '3126': '양주시', '3127': '포천시', '3128': '여주시',
+      '3135': '연천군', '3137': '가평군', '3138': '양평군'
+    };
+
+    const cityNames = [
+      '수원시', '성남시', '의정부시', '안양시', '부천시', '광명시', '평택시', '동두천시',
+      '안산시', '고양시', '과천시', '구리시', '남양주시', '오산시', '시흥시', '군포시',
+      '의왕시', '하남시', '용인시', '파주시', '이천시', '안성시', '김포시', '화성시',
+      '광주시', '양주시', '포천시', '여주시', '연천군', '가평군', '양평군'
+    ];
+
+    let map;
+    let geojsonLayer;
+    let hintMarkers = [];
+    let timerInterval = null;
+    let gameSequence = [];
+    let currentRound = 1;
+    let score = 0;
+    let timeLeft = 15;
+    let currentTargetCity = null;
+    let isHintActive = false;
+    let canClick = false;
+
+    const totalRounds = 10;
+    const defaultCenter = [37.50, 127.12];
+    const defaultZoom = 9;
+
+    const targetCityEl = document.getElementById('target-city');
+    const roundInfoEl = document.getElementById('round-info');
+    const timerTextEl = document.getElementById('timer-text');
+    const starContainer = document.getElementById('star-container');
+    const hintStateEl = document.getElementById('hint-state');
+
+    // 🔊 효과음 (파일 없이 Web Audio API 사용)
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playCorrectSound() {
+      // 🎵 경쾌한 아르페지오 (도-미-솔)
+      const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+      notes.forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.08);
+        gain.gain.setValueAtTime(0.18, audioCtx.currentTime + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + i * 0.08 + 0.25);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + i * 0.08);
+        osc.stop(audioCtx.currentTime + i * 0.08 + 0.25);
+      });
+    }
+
+    function playWrongSound() {
+      // 🎵 침울한 하강음 (라-파-레)
+      const notes = [440, 349.23, 293.66]; // A4, F4, D4
+      notes.forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.1);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime + i * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + i * 0.1 + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + i * 0.1);
+        osc.stop(audioCtx.currentTime + i * 0.1 + 0.35);
+      });
+    }
+
+    // 🎉 폭죽 느낌 효과음
+    function playSuccessEffect() {
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(600 + Math.random() * 600, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.15);
+        }, i * 100);
+      }
+    }
+
+    // ⏰ 긴박한 소리
+    function playWarningSound() {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.2);
+    }
+
+    // 📦 띵동 소리
+    function playDoorBell() {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.4);
+    }
+
+    function initMap() {
+      // 시작 화면에서 대기 → 버튼 누르면 실행
+      return;
+    }
+
+    function openBoxAndStart() {
+      audioCtx.resume();
+      const box = document.getElementById('box');
+      box.style.transform = 'scale(1.3) rotate(10deg)';
+      setTimeout(() => {
+        box.textContent = '🎆';
+      }, 300);
+      setTimeout(() => {
+        document.getElementById('start-screen').style.display = 'none';
+        realInitMap();
+      }, 700);
+    }
+
+    function realInitMap() {
+      map = L.map('map', {
+        center: defaultCenter,
+        zoom: defaultZoom,
+        minZoom: 8,
+        maxZoom: 14,
+        zoomControl: false,
+        scrollWheelZoom: true,
+        dragging: true,
+        touchZoom: true
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(map);
+
+      const dataUrls = [
+        'https://fastly.jsdelivr.net/gh/southkorea/southkorea-maps@master/kostat/2013/json/skorea_municipalities_geo_simple.json',
+        'https://cdn.jsdelivr.net/gh/southkorea/southkorea-maps@master/kostat/2013/json/skorea_municipalities_geo_simple.json',
+        'https://raw.githubusercontent.com/southkorea/southkorea-maps/master/kostat/2013/json/skorea_municipalities_geo_simple.json'
+      ];
+
+      loadGeoJsonWithFallback(dataUrls)
+        .then(data => {
+          const features = data.features.filter(feature => {
+            const code = feature.properties.code;
+            return code.startsWith('31') || code.startsWith('11') || code.startsWith('23');
+          });
+
+          features.forEach(feature => {
+            const code = feature.properties.code;
+            if (code.startsWith('31')) {
+              const prefix = code.substring(0, 4);
+              feature.properties.cityName = cityMapping[prefix] || feature.properties.name;
+            }
+          });
+
+          geojsonLayer = L.geoJSON(features, {
+            style: featureStyle,
+            onEachFeature
+          }).addTo(map);
+
+          map.setView(defaultCenter, defaultZoom);
+          document.getElementById('loading-screen').classList.add('hidden');
+          playDoorBell();
+          setTimeout(() => startGame(), 400);
+        })
+        .catch(error => {
+          console.error(error);
+          document.getElementById('loading-message').classList.remove('animate-pulse');
+          document.getElementById('loading-message').innerHTML = '행정구역 데이터를 불러오지 못했어요.<br />인터넷 연결을 확인한 뒤 새로고침해 주세요.';
+          document.getElementById('retry-btn').classList.remove('hidden');
+        });
+    }
+
+    async function loadGeoJsonWithFallback(urls) {
+      let lastError;
+      for (const url of urls) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          const response = await fetch(url, { signal: controller.signal, cache: 'force-cache' });
+          clearTimeout(timeoutId);
+          if (!response.ok) throw new Error('지도 데이터 로딩 실패');
+          return await response.json();
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError;
+    }
+
+    function featureStyle(feature) {
+      const code = feature.properties.code;
+      if (code.startsWith('31')) {
+        return { color: '#1f2937', weight: 2.4, fillColor: '#b7e0ef', fillOpacity: 0.46, className: 'city-polygon' };
+      }
+      if (code.startsWith('11')) {
+        return { color: '#ef7d22', weight: 1.5, fillColor: '#f6c192', fillOpacity: 0.28, interactive: false };
+      }
+      return { color: '#7c8490', weight: 1.4, fillColor: '#dbe2ea', fillOpacity: 0.28, interactive: false };
+    }
+
+    function defaultGyeonggiStyle() {
+      return { color: '#1f2937', weight: 2.4, fillColor: '#b7e0ef', fillOpacity: 0.46, className: 'city-polygon' };
+    }
+
+    function onEachFeature(feature, layer) {
+      if (!feature.properties.code.startsWith('31')) return;
+      layer.on({
+        click: handleCityClick,
+        mouseover: () => { if (canClick) layer.setStyle({ weight: 3.6, fillOpacity: 0.66 }); },
+        mouseout: () => { if (canClick) layer.setStyle(defaultGyeonggiStyle()); }
+      });
+    }
+
+    function initStars() {
+      starContainer.innerHTML = '';
+      for (let i = 0; i < totalRounds; i++) {
+        const star = document.createElement('span');
+        star.id = `star-${i}`;
+        star.className = 'star';
+        star.textContent = '☆';
+        starContainer.appendChild(star);
+      }
+    }
+
+    function startGame() {
+      clearInterval(timerInterval);
+      document.getElementById('result-screen').classList.add('hidden');
+      document.getElementById('result-screen').classList.remove('flex');
+      score = 0;
+      currentRound = 1;
+      isHintActive = false;
+      hideHints();
+      updateHintButton();
+      initStars();
+      resetMapColors();
+      map.setView(defaultCenter, defaultZoom);
+      gameSequence = [...cityNames].sort(() => Math.random() - 0.5).slice(0, totalRounds).map(name => ({ name }));
+      startRound();
+    }
+
+    function startRound() {
+      if (currentRound > totalRounds) {
+        endGame();
+        return;
+      }
+      resetMapColors();
+      currentTargetCity = gameSequence[currentRound - 1];
+      targetCityEl.textContent = currentTargetCity.name;
+      roundInfoEl.textContent = `(${currentRound}/${totalRounds})`;
+      timeLeft = 15;
+      canClick = true;
+      updateTimerUI();
+      startTimer();
+    }
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timeLeft -= 1;
+        updateTimerUI();
+        if (timeLeft <= 0) {
+          playWarningSound();
+          clearInterval(timerInterval);
+          handleTimeOut();
+        }
+      }, 1000);
+    }
+
+    function updateTimerUI() {
+      timerTextEl.textContent = timeLeft;
+      timerTextEl.classList.toggle('timer-warning', timeLeft <= 5 && timeLeft > 0);
+    }
+
+    function handleCityClick(event) {
+      const char = document.getElementById('character');
+      moveCharacterToClick(event);
+      if (!canClick) return;
+      canClick = false;
+      clearInterval(timerInterval);
+      const clickedCityName = event.target.feature.properties.cityName;
+      if (clickedCityName === currentTargetCity.name) {
+        char.classList.add('jump');
+        createSparkles();
+        fullScreenFlash();
+        launchFireworks();
+        setTimeout(()=>char.classList.remove('jump'),300);
+        playCorrectSound();
+        playSuccessEffect();
+        highlightCityByName(clickedCityName, { fillColor: '#4ade80', fillOpacity: 0.86, color: '#166534', weight: 4 });
+        document.getElementById(`star-${currentRound - 1}`).classList.add('earned');
+        document.getElementById(`star-${currentRound - 1}`).textContent = '★';
+        score += 1;
+        showAlert('success-alert');
+        setTimeout(() => { hideAlert('success-alert'); currentRound += 1; startRound(); }, 1200);
+      } else {
+        char.classList.add('shake');
+        setTimeout(()=>char.classList.remove('shake'),400);
+        playWrongSound();
+        highlightCityByName(clickedCityName, { fillColor: '#fb7185', fillOpacity: 0.82, color: '#9f1239', weight: 4 });
+        showAlert('wrong-alert');
+        setTimeout(() => { hideAlert('wrong-alert'); highlightCityByName(clickedCityName, defaultGyeonggiStyle()); canClick = true; startTimer(); }, 850);
+      }
+    }
+
+    function handleTimeOut() {
+      canClick = false;
+      highlightCityByName(currentTargetCity.name, { fillColor: '#fde047', fillOpacity: 0.92, color: '#a16207', weight: 4 });
+      setTimeout(() => { currentRound += 1; startRound(); }, 1300);
+    }
+
+    function highlightCityByName(cityName, style) {
+      geojsonLayer.eachLayer(layer => {
+        if (layer.feature.properties.cityName === cityName) {
+          layer.setStyle(style);
+          layer.bringToFront();
+        }
+      });
+    }
+
+    function resetMapColors() {
+      if (!geojsonLayer) return;
+      geojsonLayer.setStyle(featureStyle);
+    }
+
+    function showAlert(id) {
+      const el = document.getElementById(id);
+      el.classList.remove('hidden');
+      el.classList.add('pop-alert');
+    }
+
+    function hideAlert(id) {
+      const el = document.getElementById(id);
+      el.classList.add('hidden');
+      el.classList.remove('pop-alert');
+    }
+
+    function toggleHint() {
+      isHintActive = !isHintActive;
+      updateHintButton();
+      if (isHintActive) showHints();
+      else hideHints();
+    }
+
+    function updateHintButton() {
+      hintStateEl.textContent = isHintActive ? '끄기' : '보기';
+    }
+
+    function showHints() {
+      if (!geojsonLayer) return;
+      if (hintMarkers.length === 0) {
+        cityNames.forEach(cityName => {
+          const bounds = L.latLngBounds([]);
+          geojsonLayer.eachLayer(layer => {
+            if (layer.feature.properties.cityName === cityName) bounds.extend(layer.getBounds());
+          });
+          if (bounds.isValid()) {
+            const tooltip = L.tooltip({ permanent: true, direction: 'center', className: 'city-tooltip', opacity: 0.95 })
+              .setLatLng(bounds.getCenter())
+              .setContent(cityName);
+            hintMarkers.push(tooltip);
+          }
+        });
+      }
+      hintMarkers.forEach(marker => map.addLayer(marker));
+    }
+
+    function hideHints() {
+      if (!map) return;
+      hintMarkers.forEach(marker => map.removeLayer(marker));
+    }
+
+    function endGame() {
+      saveScore(score);
+
+      clearInterval(timerInterval);
+      canClick = false;
+      const resultScreen = document.getElementById('result-screen');
+      const resultIcon = document.getElementById('result-icon');
+      const resultTitle = document.getElementById('result-title');
+      const resultScore = document.getElementById('result-score');
+      resultScore.textContent = score;
+      if (score >= 9) {
+        resultIcon.textContent = '👑';
+        resultTitle.textContent = '최고의 택배왕!';
+        resultTitle.className = 'text-4xl text-yellow-500 mb-3';
+      } else if (score >= 6) {
+        resultIcon.textContent = '🚚';
+        resultTitle.textContent = '든든한 배달 기사!';
+        resultTitle.className = 'text-4xl text-green-600 mb-3';
+      } else {
+        resultIcon.textContent = '🌱';
+        resultTitle.textContent = '택배 수습생!';
+        resultTitle.className = 'text-4xl text-blue-700 mb-3';
+      }
+      resultScreen.classList.remove('hidden');
+      resultScreen.classList.add('flex');
+    }
+
+    function saveScore(score) {
+      let scores = JSON.parse(localStorage.getItem('scores') || '[]');
+      scores.push(score);
+      scores.sort((a,b)=>b-a);
+      scores = scores.slice(0,5);
+      localStorage.setItem('scores', JSON.stringify(scores));
+      showRanking(scores);
+    }
+
+    function showRanking(scores) {
+      let text = '🏆 랭킹 TOP5\n';
+      scores.forEach((s, i) => {
+        text += (i + 1) + '위 : ' + s + '점\n';
+      });
+      alert(text);
+    }
+
+    function createSparkles() {
+      for(let i=0;i<8;i++){
+        const s=document.createElement('div');
+        s.className='sparkle';
+        s.textContent=['✨','⭐','🌟','💫'][Math.floor(Math.random()*4)];
+        s.style.left=(window.innerWidth/2 + Math.random()*160-80)+'px';
+        s.style.top=(window.innerHeight/2 + Math.random()*120-60)+'px';
+        document.body.appendChild(s);
+        setTimeout(()=>s.remove(),700);
+      }
+    }
+
+    function moveCharacterToClick(event) {
+      const char = document.getElementById('character');
+      const main = document.querySelector('main');
+      if (!char || !main || !event || !event.originalEvent) return;
+
+      const mainRect = main.getBoundingClientRect();
+      const x = event.originalEvent.clientX - mainRect.left - 30;
+      const y = event.originalEvent.clientY - mainRect.top - 70;
+
+      char.style.left = Math.max(8, Math.min(x, mainRect.width - 80)) + 'px';
+      char.style.top = Math.max(8, Math.min(y, mainRect.height - 90)) + 'px';
+      char.style.bottom = 'auto';
+    }
+
+    function launchFireworks() {
+      const colors = ['#ff3b30', '#ffcc00', '#34c759', '#007aff', '#af52de', '#ff9500'];
+      const centers = [
+        { x: window.innerWidth * 0.35, y: window.innerHeight * 0.35 },
+        { x: window.innerWidth * 0.55, y: window.innerHeight * 0.28 },
+        { x: window.innerWidth * 0.70, y: window.innerHeight * 0.42 }
+      ];
+
+      centers.forEach((center, index) => {
+        setTimeout(() => {
+          for (let i = 0; i < 28; i++) {
+            const p = document.createElement('div');
+            p.className = 'firework-particle';
+            const angle = (Math.PI * 2 * i) / 28;
+            const distance = 70 + Math.random() * 55;
+            p.style.left = center.x + 'px';
+            p.style.top = center.y + 'px';
+            p.style.color = colors[Math.floor(Math.random() * colors.length)];
+            p.style.background = p.style.color;
+            p.style.setProperty('--dx', Math.cos(angle) * distance + 'px');
+            p.style.setProperty('--dy', Math.sin(angle) * distance + 'px');
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), 850);
+          }
+        }, index * 160);
+      });
+    }
+
+    function fullScreenFlash() {
+      const flash = document.getElementById('flash-effect');
+      if (flash) {
+        flash.classList.remove('flash-on');
+        void flash.offsetWidth;
+        flash.classList.add('flash-on');
+      }
+
+      const emojis = ['🎉','✨','⭐','💫','📦'];
+      for (let i = 0; i < 18; i++) {
+        const c = document.createElement('div');
+        c.className = 'big-confetti';
+        c.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        c.style.left = Math.random() * window.innerWidth + 'px';
+        c.style.top = (window.innerHeight * 0.35 + Math.random() * window.innerHeight * 0.35) + 'px';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 950);
+      }
+    }
+
+    function resetGame() {
+      startGame();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initMap);
+    } else {
+      // 초기 실행은 시작 화면만 표시됨
+    }
+  </script>
+</body>
+</html>
