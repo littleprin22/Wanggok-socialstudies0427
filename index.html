@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>택배왔어요 - 지도형 행정구역 게임</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -11,14 +11,37 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
+    :root {
+      --app-height: 100vh;
+      --footer-height: 210px;
+    }
+
     html, body {
       margin: 0;
       width: 100%;
-      height: 100dvh;
-      overflow: hidden; /* 한 화면 고정 */
+      height: var(--app-height);
+      overflow: hidden;
       font-family: 'Jua', sans-serif;
       user-select: none;
       background: #ffffff;
+      overscroll-behavior: none;
+    }
+
+    #app {
+      width: 100vw;
+      height: var(--app-height);
+      max-height: var(--app-height);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+    }
+
+    #map-area {
+      position: relative;
+      height: calc(var(--app-height) - var(--footer-height));
+      flex: 0 0 calc(var(--app-height) - var(--footer-height));
+      min-height: 0;
     }
 
     #map {
@@ -26,6 +49,24 @@
       height: 100%;
       background: #aad3df;
       z-index: 1;
+    }
+
+    #game-footer {
+      position: relative;
+      height: var(--footer-height);
+      min-height: var(--footer-height);
+      max-height: var(--footer-height);
+      flex: 0 0 var(--footer-height);
+      background: white;
+      border-top: 4px solid #3b82f6;
+      box-shadow: 0 -6px 16px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 16px 92px calc(18px + env(safe-area-inset-bottom)) 12px;
+      box-sizing: border-box;
+      z-index: 400;
     }
 
     #school-logo {
@@ -43,7 +84,6 @@
       box-shadow: 0 4px 14px rgba(0,0,0,0.18);
     }
 
-    /* 👑 캐릭터 */
     #character {
       position:absolute;
       bottom:100px;
@@ -53,13 +93,8 @@
       transition: left 0.65s ease, top 0.65s ease, transform 0.3s;
     }
 
-    .jump {
-      transform: translateY(-40px) scale(1.2);
-    }
-
-    .shake {
-      animation: shake 0.4s;
-    }
+    .jump { transform: translateY(-40px) scale(1.2); }
+    .shake { animation: shake 0.4s; }
 
     @keyframes shake {
       0% { transform: translateX(0); }
@@ -82,7 +117,6 @@
       100% { opacity:0; transform: scale(1.5) translateY(-40px); }
     }
 
-    /* 🎆 정답 시 화면 전체 반짝 */
     #flash-effect {
       position: fixed;
       inset: 0;
@@ -92,9 +126,7 @@
       opacity: 0;
     }
 
-    .flash-on {
-      animation: fullFlash 0.65s ease-out;
-    }
+    .flash-on { animation: fullFlash 0.65s ease-out; }
 
     @keyframes fullFlash {
       0% { opacity: 0; }
@@ -115,7 +147,6 @@
       100% { opacity: 0; transform: translateY(-90px) scale(1.4) rotate(180deg); }
     }
 
-    /* 🎇 정답 폭죽 */
     .firework-particle {
       position: fixed;
       width: 10px;
@@ -128,14 +159,8 @@
     }
 
     @keyframes fireworkBurst {
-      0% {
-        opacity: 1;
-        transform: translate(0, 0) scale(1.2);
-      }
-      100% {
-        opacity: 0;
-        transform: translate(var(--dx), var(--dy)) scale(0.2);
-      }
+      0% { opacity: 1; transform: translate(0, 0) scale(1.2); }
+      100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
     }
 
     .city-polygon {
@@ -154,8 +179,54 @@
       box-shadow: 0 3px 8px rgba(0,0,0,0.2);
     }
 
+    #destination-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      margin-top: 2px;
+      margin-bottom: 14px;
+      white-space: nowrap;
+    }
+
+    #destination-label {
+      font-size: clamp(28px, 4vw, 42px);
+      color: #111827;
+    }
+
+    #target-city {
+      font-size: clamp(32px, 4.6vw, 48px);
+      color: #1d4ed8;
+      background: #fef08a;
+      padding: 4px 18px;
+      border-radius: 16px;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.12);
+      line-height: 1.15;
+    }
+
+    #round-info {
+      font-size: clamp(18px, 2.5vw, 28px);
+      color: #6b7280;
+      font-family: sans-serif;
+      font-weight: 700;
+    }
+
+    #star-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(5px, 1.2vw, 12px);
+      width: 100%;
+      flex-wrap: nowrap;
+      overflow: visible;
+      padding: 0;
+      box-sizing: border-box;
+      margin: 0 auto;
+    }
+
     .star {
-      font-size: clamp(22px, 3.2vw, 40px);
+      font-size: clamp(27px, 4vw, 44px);
       color: #fffdf0;
       -webkit-text-stroke: 3px #e5e7eb;
       text-shadow: 0 2px 1px rgba(0,0,0,0.04);
@@ -165,7 +236,6 @@
       position: relative;
     }
 
-    /* ✨ 별 반짝 애니메이션 */
     .star::after {
       content: '';
       position: absolute;
@@ -176,9 +246,7 @@
       pointer-events: none;
     }
 
-    .star.earned::after {
-      animation: starGlow 0.9s ease-out;
-    }
+    .star.earned::after { animation: starGlow 0.9s ease-out; }
 
     @keyframes starGlow {
       0% { opacity: 0; transform: scale(0.6); }
@@ -200,66 +268,26 @@
       100% { transform: scale(1.12) rotate(0deg); }
     }
 
-    #star-container {
+    #timer-box {
+      position: absolute;
+      right: 22px;
+      top: 50%;
+      transform: translateY(-50%);
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: clamp(2px, 0.7vw, 8px);
-      width: 100%;
-      max-width: calc(100% - 90px); /* 오른쪽 타이머 공간 확보 */
-      flex-wrap: nowrap; /* 한 줄 고정 */
-      overflow: visible;
-      padding: 0;
-      box-sizing: border-box;
-      margin: 0 auto;
     }
 
-    @media (max-width: 1200px) {
-      .star {
-        font-size: clamp(22px, 3.1vw, 34px);
-        -webkit-text-stroke: 2px #e5e7eb;
-      }
-
-      #star-container {
-        max-width: calc(100% - 90px);
-        gap: 5px;
-        flex-wrap: nowrap;
-      }
-    }
-
-    @media (max-width: 900px) {
-      .star {
-        font-size: clamp(14px, 2.2vw, 20px);
-        -webkit-text-stroke: 1.5px #e5e7eb;
-      }
-
-      #star-container {
-        max-width: calc(100% - 70px);
-        gap: 1px;
-        flex-wrap: nowrap;
-      }
-    }
-
-    @media (max-width: 720px) {
-      .star {
-        font-size: clamp(14px, 2.4vw, 20px);
-        -webkit-text-stroke: 1.5px #e5e7eb;
-      }
-
-      #star-container {
-        max-width: calc(100% - 74px);
-        gap: 1px;
-      }
-    }
+    #timer-icon { font-size: clamp(30px, 4vw, 42px); line-height: 1; }
+    #timer-text { font-size: clamp(44px, 6vw, 62px); color: #000; line-height: 1; }
 
     @keyframes timerPulse {
       0%, 100% { transform: scale(1); color: #000; }
       50% { transform: scale(1.14); color: #ef4444; }
     }
 
-    .timer-warning {
-      animation: timerPulse 0.8s infinite;
-    }
+    .timer-warning { animation: timerPulse 0.8s infinite; }
 
     @keyframes pop {
       0% { transform: translate(-50%, -50%) scale(0.75); opacity: 0; }
@@ -267,24 +295,35 @@
       100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
     }
 
-    .pop-alert {
-      animation: pop 0.25s ease-out;
-    }
+    .pop-alert { animation: pop 0.25s ease-out; }
 
     .leaflet-control-zoom a {
       font-family: sans-serif;
       font-weight: bold;
     }
+
+    @media (max-width: 900px) {
+      :root { --footer-height: 200px; }
+      #game-footer { padding-right: 84px; padding-top: 14px; }
+      #star-container { gap: 4px; }
+      .star { font-size: clamp(24px, 3.8vw, 34px); -webkit-text-stroke: 2px #e5e7eb; }
+    }
+
+    @media (max-width: 720px) {
+      :root { --footer-height: 190px; }
+      #game-footer { padding-right: 74px; padding-top: 12px; }
+      #destination-row { gap: 5px; margin-bottom: 12px; }
+      .star { font-size: clamp(18px, 3.5vw, 28px); -webkit-text-stroke: 1.5px #e5e7eb; }
+      #star-container { gap: 2px; }
+      #timer-box { right: 12px; }
+    }
   </style>
 </head>
 
 <body>
-  <div class="relative w-screen flex flex-col bg-white" style="height:100dvh; max-height:100dvh; overflow:hidden;">
-
-    <!-- 왕곡초 로고: 같은 폴더에 로고 파일을 넣으면 표시됩니다. -->
+  <div id="app">
     <img id="school-logo" src="왕곡초 로고(3).jpg" alt="왕곡초 로고" onerror="this.style.display='none'" />
 
-    <!-- 🎮 시작 화면 -->
     <section id="start-screen" class="absolute inset-0 z-[1100] bg-black/60 backdrop-blur-sm flex items-center justify-center">
       <div class="bg-white rounded-3xl p-10 text-center shadow-2xl border-4 border-blue-300">
         <div id="box" class="text-7xl mb-4 transition-transform duration-500">📦</div>
@@ -297,7 +336,7 @@
       </div>
     </section>
 
-    <section id="loading-screen" class="absolute inset-0 z-[1000] bg-black/55 backdrop-blur-sm flex items-center justify-center">
+    <section id="loading-screen" class="hidden absolute inset-0 z-[1000] bg-black/55 backdrop-blur-sm flex items-center justify-center">
       <div class="rounded-[2rem] bg-white px-10 py-8 text-center shadow-2xl border-4 border-yellow-300">
         <div class="text-6xl mb-3">📦</div>
         <h1 class="text-5xl text-blue-700 mb-3">택배왔어요!</h1>
@@ -317,11 +356,9 @@
       </div>
     </section>
 
-    <main class="relative flex-1 min-h-0" style="height: calc(100dvh - 145px); flex: 0 0 calc(100dvh - 145px);">
+    <main id="map-area">
       <div id="map"></div>
       <div id="flash-effect"></div>
-
-      <!-- 👑 어린왕자 캐릭터 -->
       <div id="character">🤴</div>
 
       <div id="success-alert" class="hidden absolute left-1/2 top-1/2 z-[700] -translate-x-1/2 -translate-y-1/2 bg-gray-900/90 text-white text-5xl px-10 py-6 rounded-3xl border-4 border-white shadow-2xl pointer-events-none">
@@ -337,23 +374,40 @@
       </button>
     </main>
 
-    <footer class="relative bg-white border-t-[4px] border-blue-500 shadow-[0_-6px_16px_rgba(0,0,0,0.08)] flex flex-col items-center justify-center px-3" style="height:145px; min-height:145px; max-height:145px; flex:0 0 145px; padding-bottom: env(safe-area-inset-bottom);">
-      <div class="flex items-center justify-center gap-2 mb-2">
-        <span class="text-3xl md:text-4xl text-gray-900" style="font-family: 'Jua', sans-serif;">배송지:</span>
-        <span id="target-city" class="text-3xl md:text-4xl text-blue-700 bg-yellow-200 px-4 py-1 rounded-xl shadow-inner" style="font-family: 'Jua', sans-serif;">-</span>
-        <span id="round-info" class="text-xl md:text-2xl text-gray-500 ml-1 font-sans font-bold">(1/10)</span>
+    <footer id="game-footer">
+      <div id="destination-row">
+        <span id="destination-label">배송지:</span>
+        <span id="target-city">-</span>
+        <span id="round-info">(1/10)</span>
       </div>
 
       <div id="star-container"></div>
 
-      <div class="absolute right-[5vw] top-1/2 -translate-y-1/2 flex flex-col items-center" style="transform: translateY(-45%);">
-        <div class="text-3xl mb-[-4px]">⏰</div>
-        <div id="timer-text" class="text-4xl md:text-5xl text-black leading-none">15</div>
+      <div id="timer-box">
+        <div id="timer-icon">⏰</div>
+        <div id="timer-text">15</div>
       </div>
     </footer>
   </div>
 
   <script>
+    let map = null;
+    let geojsonLayer = null;
+    let hintMarkers = [];
+    let timerInterval = null;
+    let gameSequence = [];
+    let currentRound = 1;
+    let score = 0;
+    let timeLeft = 15;
+    let currentTargetCity = null;
+    let isHintActive = false;
+    let canClick = false;
+    let audioCtx = null;
+
+    const totalRounds = 10;
+    const defaultCenter = [37.50, 127.12];
+    const defaultZoom = 9;
+
     const cityMapping = {
       '3101': '수원시', '3102': '성남시', '3103': '의정부시', '3104': '안양시',
       '3105': '부천시', '3106': '광명시', '3107': '평택시', '3108': '동두천시',
@@ -372,128 +426,149 @@
       '광주시', '양주시', '포천시', '여주시', '연천군', '가평군', '양평군'
     ];
 
-    let map;
-    let geojsonLayer;
-    let hintMarkers = [];
-    let timerInterval = null;
-    let gameSequence = [];
-    let currentRound = 1;
-    let score = 0;
-    let timeLeft = 15;
-    let currentTargetCity = null;
-    let isHintActive = false;
-    let canClick = false;
-
-    const totalRounds = 10;
-    const defaultCenter = [37.50, 127.12];
-    const defaultZoom = 9;
-
     const targetCityEl = document.getElementById('target-city');
     const roundInfoEl = document.getElementById('round-info');
     const timerTextEl = document.getElementById('timer-text');
     const starContainer = document.getElementById('star-container');
     const hintStateEl = document.getElementById('hint-state');
 
-    // 🔊 효과음 (파일 없이 Web Audio API 사용)
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function getAudioCtx() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return null;
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+      return audioCtx;
+    }
+
+    function setAppHeight() {
+      const height = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      document.documentElement.style.setProperty('--app-height', height + 'px');
+      if (map) {
+        setTimeout(() => map.invalidateSize(), 80);
+      }
+    }
+
+    function runSelfTests() {
+      console.assert(Array.isArray(cityNames), 'cityNames는 배열이어야 합니다.');
+      console.assert(cityNames.length >= totalRounds, '도시 목록은 라운드 수보다 많아야 합니다.');
+      console.assert(cityMapping['3117'] === '의왕시', '의왕시 코드 매핑이 필요합니다.');
+      console.assert(document.getElementById('map'), '지도 영역이 있어야 합니다.');
+      console.assert(document.getElementById('game-footer'), '하단 정보 영역이 있어야 합니다.');
+    }
 
     function playCorrectSound() {
-      // 🎵 경쾌한 아르페지오 (도-미-솔)
-      const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const notes = [523.25, 659.25, 783.99];
       notes.forEach((freq, i) => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.08);
-        gain.gain.setValueAtTime(0.18, audioCtx.currentTime + i * 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + i * 0.08 + 0.25);
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.08);
+        gain.gain.setValueAtTime(0.18, ctx.currentTime + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.08 + 0.25);
         osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(audioCtx.currentTime + i * 0.08);
-        osc.stop(audioCtx.currentTime + i * 0.08 + 0.25);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.08);
+        osc.stop(ctx.currentTime + i * 0.08 + 0.25);
       });
     }
 
     function playWrongSound() {
-      // 🎵 침울한 하강음 (라-파-레)
-      const notes = [440, 349.23, 293.66]; // A4, F4, D4
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const notes = [440, 349.23, 293.66];
       notes.forEach((freq, i) => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.1);
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime + i * 0.1);
-        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + i * 0.1 + 0.35);
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.1);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.1 + 0.35);
         osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(audioCtx.currentTime + i * 0.1);
-        osc.stop(audioCtx.currentTime + i * 0.1 + 0.35);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.1);
+        osc.stop(ctx.currentTime + i * 0.1 + 0.35);
       });
     }
 
-    // 🎉 폭죽 느낌 효과음
     function playSuccessEffect() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
       for (let i = 0; i < 3; i++) {
         setTimeout(() => {
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
           osc.type = 'triangle';
-          osc.frequency.setValueAtTime(600 + Math.random() * 600, audioCtx.currentTime);
-          gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          osc.frequency.setValueAtTime(600 + Math.random() * 600, ctx.currentTime);
+          gain.gain.setValueAtTime(0.15, ctx.currentTime);
           osc.connect(gain);
-          gain.connect(audioCtx.destination);
+          gain.connect(ctx.destination);
           osc.start();
-          osc.stop(audioCtx.currentTime + 0.15);
+          osc.stop(ctx.currentTime + 0.15);
         }, i * 100);
       }
     }
 
-    // ⏰ 긴박한 소리
     function playWarningSound() {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(400, ctx.currentTime);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
       osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      gain.connect(ctx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.2);
+      osc.stop(ctx.currentTime + 0.2);
     }
 
-    // 📦 띵동 소리
     function playDoorBell() {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(523, audioCtx.currentTime);
-      osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2);
-      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(523, ctx.currentTime);
+      osc.frequency.setValueAtTime(659, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
       osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      gain.connect(ctx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.4);
+      osc.stop(ctx.currentTime + 0.4);
     }
 
     function initMap() {
-      // 시작 화면에서 대기 → 버튼 누르면 실행
-      return;
+      setAppHeight();
+      runSelfTests();
     }
 
     function openBoxAndStart() {
-      audioCtx.resume();
+      getAudioCtx();
+      setAppHeight();
       const box = document.getElementById('box');
       box.style.transform = 'scale(1.3) rotate(10deg)';
-      setTimeout(() => {
-        box.textContent = '🎆';
-      }, 300);
+      setTimeout(() => { box.textContent = '🎆'; }, 300);
       setTimeout(() => {
         document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('loading-screen').classList.remove('hidden');
         realInitMap();
       }, 700);
     }
 
     function realInitMap() {
+      setAppHeight();
+
+      if (map) {
+        map.remove();
+        map = null;
+      }
+
       map = L.map('map', {
         center: defaultCenter,
         zoom: defaultZoom,
@@ -537,6 +612,7 @@
           }).addTo(map);
 
           map.setView(defaultCenter, defaultZoom);
+          setAppHeight();
           document.getElementById('loading-screen').classList.add('hidden');
           playDoorBell();
           setTimeout(() => startGame(), 400);
@@ -612,6 +688,7 @@
       updateHintButton();
       initStars();
       resetMapColors();
+      setAppHeight();
       map.setView(defaultCenter, defaultZoom);
       gameSequence = [...cityNames].sort(() => Math.random() - 0.5).slice(0, totalRounds).map(name => ({ name }));
       startRound();
@@ -662,21 +739,19 @@
         createSparkles();
         fullScreenFlash();
         launchFireworks();
-        setTimeout(()=>char.classList.remove('jump'),300);
+        setTimeout(() => char.classList.remove('jump'), 300);
         playCorrectSound();
         playSuccessEffect();
         highlightCityByName(clickedCityName, { fillColor: '#4ade80', fillOpacity: 0.86, color: '#166534', weight: 4 });
         const starEl = document.getElementById(`star-${currentRound - 1}`);
         starEl.classList.add('earned');
-        starEl.classList.add('pop-star');
-        setTimeout(()=>starEl.classList.remove('pop-star'), 400);
-        document.getElementById(`star-${currentRound - 1}`).textContent = '★';
+        starEl.textContent = '★';
         score += 1;
         showAlert('success-alert');
         setTimeout(() => { hideAlert('success-alert'); currentRound += 1; startRound(); }, 1200);
       } else {
         char.classList.add('shake');
-        setTimeout(()=>char.classList.remove('shake'),400);
+        setTimeout(() => char.classList.remove('shake'), 400);
         playWrongSound();
         highlightCityByName(clickedCityName, { fillColor: '#fb7185', fillOpacity: 0.82, color: '#9f1239', weight: 4 });
         showAlert('wrong-alert');
@@ -691,6 +766,7 @@
     }
 
     function highlightCityByName(cityName, style) {
+      if (!geojsonLayer) return;
       geojsonLayer.eachLayer(layer => {
         if (layer.feature.properties.cityName === cityName) {
           layer.setStyle(style);
@@ -753,7 +829,6 @@
 
     function endGame() {
       saveScore(score);
-
       clearInterval(timerInterval);
       canClick = false;
       const resultScreen = document.getElementById('result-screen');
@@ -781,8 +856,8 @@
     function saveScore(score) {
       let scores = JSON.parse(localStorage.getItem('scores') || '[]');
       scores.push(score);
-      scores.sort((a,b)=>b-a);
-      scores = scores.slice(0,5);
+      scores.sort((a, b) => b - a);
+      scores = scores.slice(0, 5);
       localStorage.setItem('scores', JSON.stringify(scores));
       showRanking(scores);
     }
@@ -796,26 +871,24 @@
     }
 
     function createSparkles() {
-      for(let i=0;i<8;i++){
-        const s=document.createElement('div');
-        s.className='sparkle';
-        s.textContent=['✨','⭐','🌟','💫'][Math.floor(Math.random()*4)];
-        s.style.left=(window.innerWidth/2 + Math.random()*160-80)+'px';
-        s.style.top=(window.innerHeight/2 + Math.random()*120-60)+'px';
+      for (let i = 0; i < 8; i++) {
+        const s = document.createElement('div');
+        s.className = 'sparkle';
+        s.textContent = ['✨','⭐','🌟','💫'][Math.floor(Math.random() * 4)];
+        s.style.left = (window.innerWidth / 2 + Math.random() * 160 - 80) + 'px';
+        s.style.top = (window.innerHeight / 2 + Math.random() * 120 - 60) + 'px';
         document.body.appendChild(s);
-        setTimeout(()=>s.remove(),700);
+        setTimeout(() => s.remove(), 700);
       }
     }
 
     function moveCharacterToClick(event) {
       const char = document.getElementById('character');
-      const main = document.querySelector('main');
+      const main = document.getElementById('map-area');
       if (!char || !main || !event || !event.originalEvent) return;
-
       const mainRect = main.getBoundingClientRect();
       const x = event.originalEvent.clientX - mainRect.left - 30;
       const y = event.originalEvent.clientY - mainRect.top - 70;
-
       char.style.left = Math.max(8, Math.min(x, mainRect.width - 80)) + 'px';
       char.style.top = Math.max(8, Math.min(y, mainRect.height - 90)) + 'px';
       char.style.bottom = 'auto';
@@ -828,7 +901,6 @@
         { x: window.innerWidth * 0.55, y: window.innerHeight * 0.28 },
         { x: window.innerWidth * 0.70, y: window.innerHeight * 0.42 }
       ];
-
       centers.forEach((center, index) => {
         setTimeout(() => {
           for (let i = 0; i < 28; i++) {
@@ -856,7 +928,6 @@
         void flash.offsetWidth;
         flash.classList.add('flash-on');
       }
-
       const emojis = ['🎉','✨','⭐','💫','📦'];
       for (let i = 0; i < 18; i++) {
         const c = document.createElement('div');
@@ -870,13 +941,24 @@
     }
 
     function resetGame() {
-      startGame();
+      if (map && geojsonLayer) startGame();
+    }
+
+    window.openBoxAndStart = openBoxAndStart;
+    window.resetGame = resetGame;
+    window.toggleHint = toggleHint;
+
+    setAppHeight();
+    window.addEventListener('resize', setAppHeight);
+    window.addEventListener('orientationchange', setAppHeight);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', setAppHeight);
     }
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', initMap);
     } else {
-      // 초기 실행은 시작 화면만 표시됨
+      initMap();
     }
   </script>
 </body>
