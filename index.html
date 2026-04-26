@@ -15,7 +15,7 @@
       margin: 0;
       width: 100%;
       height: 100%;
-      overflow: hidden; /* 한 화면 고정 */
+      overflow: hidden;
       font-family: 'Jua', sans-serif;
       user-select: none;
       background: #ffffff;
@@ -46,7 +46,7 @@
     /* 👑 캐릭터 */
     #character {
       position:absolute;
-      bottom:100px;
+      bottom:120px;
       left:20px;
       font-size:60px;
       z-index:600;
@@ -162,80 +162,38 @@
       transition: all 0.25s ease;
       line-height: 1;
       flex-shrink: 0;
-      position: relative;
-    }
-
-    /* ✨ 별 반짝 애니메이션 */
-    .star::after {
-      content: '';
-      position: absolute;
-      inset: -6px;
-      border-radius: 50%;
-      opacity: 0;
-      background: radial-gradient(circle, rgba(255,255,200,0.9) 0%, rgba(255,255,255,0) 70%);
-      pointer-events: none;
-    }
-
-    .star.earned::after {
-      animation: starGlow 0.9s ease-out;
-    }
-
-    @keyframes starGlow {
-      0% { opacity: 0; transform: scale(0.6); }
-      40% { opacity: 1; transform: scale(1.2); }
-      100% { opacity: 0; transform: scale(1.6); }
     }
 
     .star.earned {
       color: #facc15;
       -webkit-text-stroke: 2px #f59e0b;
-      transform: scale(1.12);
-      text-shadow: 0 0 10px rgba(250, 204, 21, 0.85);
-      animation: starPop 0.35s ease-out;
-    }
-
-    @keyframes starPop {
-      0% { transform: scale(0.6) rotate(-10deg); }
-      60% { transform: scale(1.25) rotate(6deg); }
-      100% { transform: scale(1.12) rotate(0deg); }
+      transform: scale(1.08);
+      text-shadow: 0 0 8px rgba(250, 204, 21, 0.65);
     }
 
     #star-container {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: clamp(2px, 0.7vw, 8px);
+      gap: clamp(4px, 1.2vw, 14px);
       width: 100%;
-      max-width: calc(100% - 90px); /* 오른쪽 타이머 공간 확보 */
-      flex-wrap: nowrap; /* 한 줄 고정 */
+      max-width: 78vw;
+      flex-wrap: nowrap;
       overflow: visible;
-      padding: 0;
+      padding: 0 76px 0 8px;
       box-sizing: border-box;
-      margin: 0 auto;
     }
 
     @media (max-width: 900px) {
       .star {
-        font-size: clamp(16px, 2.7vw, 23px);
+        font-size: clamp(18px, 3.8vw, 30px);
         -webkit-text-stroke: 2px #e5e7eb;
       }
 
       #star-container {
-        max-width: calc(100% - 82px);
-        gap: 2px;
-        flex-wrap: nowrap;
-      }
-    }
-
-    @media (max-width: 720px) {
-      .star {
-        font-size: clamp(14px, 2.4vw, 20px);
-        -webkit-text-stroke: 1.5px #e5e7eb;
-      }
-
-      #star-container {
-        max-width: calc(100% - 74px);
-        gap: 1px;
+        max-width: 100%;
+        gap: 4px;
+        padding: 0 78px 0 8px;
       }
     }
 
@@ -304,7 +262,7 @@
       </div>
     </section>
 
-    <main class="relative flex-1 min-h-0" style="height: calc(100vh - 120px);">
+    <main class="relative flex-1 min-h-0">
       <div id="map"></div>
       <div id="flash-effect"></div>
 
@@ -324,18 +282,18 @@
       </button>
     </main>
 
-    <footer class="relative h-[115px] min-h-[115px] max-h-[115px] bg-white border-t-[5px] border-blue-500 shadow-[0_-8px_20px_rgba(0,0,0,0.08)] flex flex-col items-center justify-center px-3">
-      <div class="flex items-center justify-center gap-2 mb-2">
-        <span class="text-3xl md:text-4xl text-gray-900" style="font-family: 'Jua', sans-serif;">배송지:</span>
-        <span id="target-city" class="text-3xl md:text-4xl text-blue-700 bg-yellow-200 px-4 py-1 rounded-xl shadow-inner" style="font-family: 'Jua', sans-serif;">-</span>
-        <span id="round-info" class="text-xl md:text-2xl text-gray-500 ml-1 font-sans font-bold">(1/10)</span>
+    <footer class="relative h-[22vh] min-h-[140px] max-h-[180px] bg-white border-t-[5px] border-blue-500 shadow-[0_-8px_20px_rgba(0,0,0,0.08)] flex flex-col items-center justify-center px-4">
+      <div class="flex items-center justify-center gap-3 mb-3">
+        <span class="text-4xl md:text-5xl text-gray-900" style="font-family: 'Jua', sans-serif;">배송지:</span>
+        <span id="target-city" class="text-4xl md:text-5xl text-blue-700 bg-yellow-200 px-5 py-1 rounded-xl shadow-inner" style="font-family: 'Jua', sans-serif;">-</span>
+        <span id="round-info" class="text-2xl md:text-3xl text-gray-500 ml-2 font-sans font-bold">(1/10)</span>
       </div>
 
       <div id="star-container"></div>
 
-      <div class="absolute right-[5vw] top-1/2 -translate-y-1/2 flex flex-col items-center">
-        <div class="text-3xl mb-[-4px]">⏰</div>
-        <div id="timer-text" class="text-4xl md:text-5xl text-black leading-none">15</div>
+      <div class="absolute right-[9vw] top-1/2 -translate-y-1/2 flex flex-col items-center">
+        <div class="text-4xl mb-[-6px]">⏰</div>
+        <div id="timer-text" class="text-5xl md:text-6xl text-black leading-none">15</div>
       </div>
     </footer>
   </div>
@@ -653,10 +611,7 @@
         playCorrectSound();
         playSuccessEffect();
         highlightCityByName(clickedCityName, { fillColor: '#4ade80', fillOpacity: 0.86, color: '#166534', weight: 4 });
-        const starEl = document.getElementById(`star-${currentRound - 1}`);
-        starEl.classList.add('earned');
-        starEl.classList.add('pop-star');
-        setTimeout(()=>starEl.classList.remove('pop-star'), 400);
+        document.getElementById(`star-${currentRound - 1}`).classList.add('earned');
         document.getElementById(`star-${currentRound - 1}`).textContent = '★';
         score += 1;
         showAlert('success-alert');
