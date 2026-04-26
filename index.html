@@ -279,7 +279,7 @@
 </head>
 
 <body>
-  <div class="relative w-screen h-screen flex flex-col bg-white">
+  <div class="relative w-screen flex flex-col bg-white" style="height:100dvh; max-height:100dvh; overflow:hidden;">
 
     <!-- 왕곡초 로고: 같은 폴더에 로고 파일을 넣으면 표시됩니다. -->
     <img id="school-logo" src="왕곡초 로고(3).jpg" alt="왕곡초 로고" onerror="this.style.display='none'" />
@@ -317,7 +317,7 @@
       </div>
     </section>
 
-    <main class="relative flex-1 min-h-0" style="height: calc(100dvh - 155px);">
+    <main class="relative flex-1 min-h-0" style="height: calc(100dvh - 145px); flex: 0 0 calc(100dvh - 145px);">
       <div id="map"></div>
       <div id="flash-effect"></div>
 
@@ -337,8 +337,8 @@
       </button>
     </main>
 
-    <footer class="relative h-[155px] min-h-[155px] max-h-[155px] bg-white border-t-[4px] border-blue-500 shadow-[0_-6px_16px_rgba(0,0,0,0.08)] flex flex-col items-center justify-center px-3">
-      <div class="flex items-center justify-center gap-2 mb-3">
+    <footer class="relative bg-white border-t-[4px] border-blue-500 shadow-[0_-6px_16px_rgba(0,0,0,0.08)] flex flex-col items-center justify-center px-3" style="height:145px; min-height:145px; max-height:145px; flex:0 0 145px; padding-bottom: env(safe-area-inset-bottom);">
+      <div class="flex items-center justify-center gap-2 mb-2">
         <span class="text-3xl md:text-4xl text-gray-900" style="font-family: 'Jua', sans-serif;">배송지:</span>
         <span id="target-city" class="text-3xl md:text-4xl text-blue-700 bg-yellow-200 px-4 py-1 rounded-xl shadow-inner" style="font-family: 'Jua', sans-serif;">-</span>
         <span id="round-info" class="text-xl md:text-2xl text-gray-500 ml-1 font-sans font-bold">(1/10)</span>
@@ -346,7 +346,7 @@
 
       <div id="star-container"></div>
 
-      <div class="absolute right-[5vw] top-1/2 -translate-y-1/2 flex flex-col items-center">
+      <div class="absolute right-[5vw] top-1/2 -translate-y-1/2 flex flex-col items-center" style="transform: translateY(-45%);">
         <div class="text-3xl mb-[-4px]">⏰</div>
         <div id="timer-text" class="text-4xl md:text-5xl text-black leading-none">15</div>
       </div>
